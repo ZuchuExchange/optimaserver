@@ -1,5 +1,9 @@
 const express = require('express');
+const cors = require('cors'); // Required to bypass browser CORS blocks
 const app = express();
+
+// Enable Cross-Origin Resource Sharing (CORS) for all origins
+app.use(cors());
 
 // Middleware to parse JSON request bodies
 app.use(express.json());
