@@ -1,0 +1,15 @@
+{
+  "name": "optimapay-stk-push",
+  "version": "1.0.0",
+  "description": "Minimal M-Pesa STK Push API wrapper for Render",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
