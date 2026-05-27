@@ -26,19 +26,21 @@ app.post('/pay', async (req, res) => {
             amount: Number(amount)
         };
 
+        // FIXED: Header casing matched exactly to OptimaPay API Specifications
         const response = await fetch(url, {
             method: 'POST',
             headers: {
-                'X-API-Key': API_KEY,
-                'X-API-Secret': API_SECRET,
+                'X-API-KEY': API_KEY,
+                'X-API-SECRET': API_SECRET,
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify(payload)
         });
 
         const data = await response.json();
+        console.log("OptimaPay Gateway Response:", data);
 
-        // If it timed out out after 5s but successfully sent, track the checkout request ID
+        // If it successfully initiated, track the checkout request ID
         if (data.success && data.status === "pending" && data.checkout_request_id) {
             transactionStatusStore[data.checkout_request_id] = "pending";
         }
@@ -51,27 +53,29 @@ app.post('/pay', async (req, res) => {
     }
 });
 
-// 2. NEW: OptimaPay Webhook Gateway Callback Listener
-// OptimaPay will automatically post transaction updates here in the background
+// 2. OptimaPay Webhook Gateway Callback Listener
+// IMPORTANT: You must register https://server100-847a.onrender.com/callback in your OptimaPay dashboard!
 app.post('/callback', (req, res) => {
     try {
         const callbackData = req.body;
         console.log("Received Webhook From OptimaPay:", callbackData);
 
-        // Map data parameters based on OptimaPay callback keys
         const checkoutRequestId = callbackData.checkout_request_id;
         const isSuccess = callbackData.success;
         const status = callbackData.status;
 
         if (checkoutRequestId) {
+            // Check variations of success definitions from gateway responses
             if (isSuccess === true || status === "completed" || status === "Success") {
                 transactionStatusStore[checkoutRequestId] = "completed";
+                console.log(`Transaction ${checkoutRequestId} marked as COMPLETED.`);
             } else {
                 transactionStatusStore[checkoutRequestId] = "failed";
+                console.log(`Transaction ${checkoutRequestId} marked as FAILED.`);
             }
         }
 
-        // Always return a 200 OK to OptimaPay so they know you received the data
+        // Always return a 200 OK to OptimaPay so they stop retrying the webhook
         return res.status(200).json({ success: true, message: "Callback processed successfully" });
     } catch (error) {
         console.error("Callback Route Processing Error:", error);
@@ -79,8 +83,7 @@ app.post('/callback', (req, res) => {
     }
 });
 
-// 3. NEW: Status Check Route for Frontend Polling
-// Your HTML page can hit this route to ask "Did the user pay yet?"
+// 3. Status Check Route for Frontend Polling
 app.get('/status/:checkout_id', (req, res) => {
     const checkoutId = req.params.checkout_id;
     const currentStatus = transactionStatusStore[checkoutId] || "unknown";
